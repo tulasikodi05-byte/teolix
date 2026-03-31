@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Teolix — Say What You Saw</title>
+<link href="https://fonts.googleapis.com/css2?family=Idiqlat:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #121212;
+  --surface: #1B263B;
+  --purple:  #5B23FF;
+  --purple2: #7B4FFF;
+  --yellow:  #FFDE42;
+  --green:   #22c55e;
+  --green2:  #16a34a;
+  --text:    #F8F9FA;
+  --text2:   #94a3b8;
+  --text3:   #475569;
+  --border:  #243044;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  font-family:'Plus Jakarta Sans',sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;width:700px;height:500px;
+  background:radial-gradient(circle,rgba(91,35,255,0.09) 0%,transparent 70%);
+  top:-80px;left:50%;transform:translateX(-50%);
+  pointer-events:none;z-index:0;
+}
+
+/* ── NAV ── */
+nav{
+  width:100%;padding:14px 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  background:rgba(18,18,18,0.92);backdrop-filter:blur(16px);
+  position:sticky;top:0;z-index:50;
+}
+.logo{font-family:'Idiqlat',serif;font-weight:700;font-size:1.5rem;color:var(--text);text-decoration:none;}
+.logo span{color:var(--yellow);}
+.nav-tag{
+  background:rgba(255,222,66,0.1);border:1px solid rgba(255,222,66,0.25);
+  color:var(--yellow);padding:5px 14px;border-radius:50px;
+  font-size:0.74rem;font-weight:700;
+}
+.nav-early{
+  background:var(--purple);color:#fff;border:none;
+  padding:7px 16px;border-radius:50px;
+  font-size:0.74rem;font-weight:700;
+  font-family:'Plus Jakarta Sans',sans-serif;
+  cursor:pointer;transition:all 0.2s;
+}
+.nav-early:hover{background:var(--purple2);transform:translateY(-1px);}
+@media(max-width:400px){.nav-tag{display:none;}}
+
+/* ── MAIN ── */
+.main{
+  width:100%;max-width:720px;
+  padding:36px 20px 60px;
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;gap:24px;
+}
+
+/* ── HERO ── */
+.hero{text-align:center;padding:0 8px;}
+.hero h1{
+  font-family:'Idiqlat',serif;font-weight:700;
+  font-size:clamp(1.7rem,4.5vw,2.8rem);
+  line-height:1.15;color:var(--text);margin-bottom:12px;
+}
+.hero h1 em{font-style:normal;color:var(--yellow);}
+.hero p{color:var(--text2);font-size:clamp(0.88rem,2.2vw,1rem);line-height:1.68;max-width:500px;margin:0 auto;}
+
+/* ── CARD ── */
+.card{
+  width:100%;background:var(--surface);
+  border:1.5px solid var(--border);border-radius:20px;
+  overflow:hidden;box-shadow:0 20px 56px rgba(0,0,0,0.5);
+  transition:border-color 0.3s,box-shadow 0.3s;
+}
+.card.is-spinning{border-color:var(--purple);box-shadow:0 0 0 1px var(--purple),0 20px 56px rgba(91,35,255,0.2);}
+.card.is-landed  {border-color:var(--yellow);box-shadow:0 0 0 1px rgba(255,222,66,0.5),0 20px 56px rgba(0,0,0,0.4);}
+.card.is-speaking{
+  border-color:var(--green);
+  animation:cardPulse 1.8s ease infinite;
+}
+.card.is-done    {border-color:var(--yellow);}
+@keyframes cardPulse{
+  0%,100%{box-shadow:0 0 0 1px var(--green),0 20px 56px rgba(34,197,94,0.15);}
+  50%    {box-shadow:0 0 0 3px rgba(34,197,94,0.35),0 20px 56px rgba(34,197,94,0.25);}
+}
+
+/* ── VIDEO WINDOW ── */
+.vwin{
+  position:relative;
+  height:clamp(200px,42vw,340px);
+  background:#000;overflow:hidden;
+}
+/* fades only during shuffle */
+.vwin.shuffle-fades::before,
+.vwin.shuffle-fades::after{
+  content:'';position:absolute;top:0;bottom:0;width:70px;z-index:4;pointer-events:none;
+}
+.vwin.shuffle-fades::before{left:0;background:linear-gradient(to right,rgba(18,18,18,0.88),transparent);}
+.vwin.shuffle-fades::after {right:0;background:linear-gradient(to left ,rgba(18,18,18,0.88),transparent);}
+
+/* yellow brackets */
+.bracket{position:absolute;top:0;bottom:0;width:3px;background:var(--yellow);z-index:5;pointer-events:none;opacity:0;transition:opacity 0.4s;}
+.bracket.l{left:0;}.bracket.r{right:0;}
+.card.is-landed .bracket,
+.card.is-speaking .bracket,
+.card.is-done .bracket{opacity:1;}
+
+/* STRIP */
+.strip{display:flex;height:100%;will-change:transform;}
+.strip-item{flex-shrink:0;width:100%;height:100%;position:relative;}
+.strip-item img,
+.strip-item video{width:100%;height:100%;object-fit:cover;display:block;}
+.strip-item .dim{position:absolute;inset:0;background:rgba(0,0,0,0.35);}
+
+/* STATUS PILL */
+.pill{
+  position:absolute;top:10px;left:10px;z-index:10;
+  padding:4px 12px;border-radius:50px;
+  font-size:0.66rem;font-weight:800;letter-spacing:1px;
+  text-transform:uppercase;display:none;backdrop-filter:blur(6px);
+}
+.pill.p-spin {display:inline-block;background:rgba(91,35,255,0.85);color:#fff;}
+.pill.p-watch{display:inline-block;background:rgba(255,222,66,0.95);color:#121212;animation:pp 1.2s ease infinite;}
+.pill.p-speak{display:inline-block;background:rgba(34,197,94,0.9);color:#fff;animation:pp 1s ease infinite;}
+.pill.p-done {display:inline-block;background:rgba(255,222,66,0.95);color:#121212;}
+@keyframes pp{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+
+/* ── BOTTOM BAR ── */
+.bbar{padding:16px 18px;border-top:1px solid var(--border);}
+
+/* ── IDLE STATE ── */
+.state-idle{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.slabel{font-family:'Idiqlat',serif;font-weight:700;font-size:clamp(0.88rem,2.5vw,1rem);color:var(--text);margin-bottom:2px;}
+.ssub  {font-size:clamp(0.7rem,2vw,0.76rem);color:var(--text3);}
+
+/* ── SECONDARY CONTROLS (Shuffle / Skip / Back) ── */
+/* shown under main CTA in most states */
+.sec-controls{
+  display:none;
+  justify-content:center;align-items:center;gap:10px;
+  margin-top:12px;flex-wrap:wrap;
+}
+.sec-controls.show{display:flex;}
+
+.btn-sec{
+  display:inline-flex;align-items:center;gap:5px;
+  background:transparent;color:var(--text3);
+  border:1.5px solid var(--border);
+  padding:7px 16px;border-radius:50px;
+  font-size:0.78rem;font-weight:600;
+  font-family:'Plus Jakarta Sans',sans-serif;
+  cursor:pointer;transition:all 0.2s;white-space:nowrap;
+}
+.btn-sec:hover{border-color:var(--purple);color:var(--text);}
+.btn-sec.warn:hover{border-color:#ef4444;color:#ef4444;}
+
+/* ── SPIN BUTTON ── */
+.spin-btn{
+  flex-shrink:0;display:inline-flex;align-items:center;gap:7px;
+  background:var(--purple);color:#fff;border:none;
+  padding:11px 26px;border-radius:50px;
+  font-size:clamp(0.84rem,2.5vw,0.92rem);font-weight:700;
+  font-family:'Plus Jakarta Sans',sans-serif;
+  cursor:pointer;transition:all 0.2s;white-space:nowrap;
+}
+.spin-btn:hover{background:var(--purple2);transform:translateY(-2px);box-shadow:0 10px 28px rgba(91,35,255,0.4);}
+.spin-btn:active{transform:scale(0.97);}
+.spin-btn:disabled{background:#252535;color:#444;cursor:not-allowed;transform:none;box-shadow:none;}
+.dice{font-size:1rem;}
+.spin-btn.is-spinning .dice{animation:roll 0.4s linear infinite;}
+@keyframes roll{to{transform:rotate(360deg);}}
+
+/* ── ACTION AREA (Rewatch + Say What You Saw) ── */
+.state-action{
+  display:none;flex-direction:column;align-items:center;gap:14px;
+}
+.state-action.show{display:flex;}
+.rewatch-row{display:flex;align-items:center;gap:10px;}
+.btn-rewatch{
+  display:inline-flex;align-items:center;gap:5px;
+  background:transparent;color:var(--text2);
+  border:1.5px solid var(--border);
+  padding:8px 18px;border-radius:50px;
+  font-size:0.82rem;font-weight:600;
+  font-family:'Plus Jakarta Sans',sans-serif;
+  cursor:pointer;transition:all 0.2s;
+}
+.btn-rewatch:hover{border-color:var(--yellow);color:var(--yellow);}
+
+.say-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  background:var(--green);color:#fff;border:none;
+  width:100%;max-width:360px;
+  padding:15px 28px;border-radius:50px;
+  font-size:clamp(0.92rem,2.8vw,1rem);font-weight:700;
+  font-family:'Plus Jakarta Sans',sans-serif;
+  cursor:pointer;transition:all 0.2s;
+  box-shadow:0 8px 24px rgba(34,197,94,0.28);
+}
+.say-btn:hover{background:var(--green2);transform:translateY(-2px);box-shadow:0 12px 32px rgba(34,197,94,0.4);}
+
+/* ── VOICE PANEL ── */
+.state-voice{
+  display:none;flex-direction:column;align-items:center;gap:14px;width:100%;
+}
+.state-voice.show{display:flex;}
+
+.big-ring{position:relative;width:clamp(110px,25vw,140px);height:clamp(110px,25vw,140px);}
+.big-ring svg{transform:rotate(-90deg);width:100%;height:100%;}
+.br-bg{fill:none;stroke:rgba(255,255,255,0.08);stroke-width:6;}
+.br-fg{fill:none;stroke:var(--green);stroke-width:6;stroke-linecap:round;stroke-dasharray:408;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke 0.4s;}
+.br-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
+.br-num  {font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(1.8rem,5vw,2.4rem);font-weight:900;color:var(--green);line-height:1;}
+.br-label{font-size:0.66rem;color:var(--text3);font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+
+.mic-wave{display:flex;align-items:flex-end;justify-content:center;gap:4px;height:24px;}
+.mic-wave span{display:block;width:4px;border-radius:4px;background:var(--green);animation:wave 0.9s ease infinite;}
+.mic-wave span:nth-child(1){height:8px; animation-delay:0s;}
+.mic-wave span:nth-child(2){height:18px;animation-delay:0.15s;}
+.mic-wave span:nth-child(3){height:24px;animation-delay:0.05s;}
+.mic-wave span:nth-child(4){height:14px;animation-delay:0.2s;}
+.mic-wave span:nth-child(5){height:8px; animation-delay:0.1s;}
+@keyframes wave{0%,100%{transform:scaleY(0.4);}50%{transform:scaleY(1);}}
+.speaking-lbl{font-size:clamp(0.78rem,2.2vw,0.86rem);color:var(--text2);font-weight:500;}
+
+/* ── DONE PANEL ── */
+.state-done{
+  display:none;flex-direction:column;align-items:center;gap:12px;width:100%;text-align:center;
+}
+.state-done.show{display:flex;}
+.done-title{font-family:'Idiqlat',serif;font-weight:700;font-size:clamp(1rem,3vw,1.15rem);color:var(--text);}
+.done-sub  {font-size:clamp(0.78rem,2.2vw,0.84rem);color:var(--text2);line-height:1.6;max-width:420px;}
+.done-btns {display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;}
+.btn-retake{
+  display:inline-flex;align-items:center;gap:6px;
+  background:transparent;color:var(--text2);border:1.5px solid var(--border);
+  padding:10px 20px;border-radius:50px;font-size:0.86rem;font-weight:700;
+  font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all 0.2s;
+}
+.btn-retake:hover{border-color:var(--green);color:var(--green);}
+.btn-next{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--purple);color:#fff;border:none;
+  padding:10px 22px;border-radius:50px;font-size:0.86rem;font-weight:700;
+  font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all 0.2s;
+}
+.btn-next:hover{background:var(--purple2);transform:translateY(-1px);}
+
+/* ── LEAD OVERLAY ── */
+.lead-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(10,10,20,0.88);backdrop-filter:blur(14px);
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.lead-overlay.show{display:flex;}
+.lead-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:22px;padding:clamp(24px,5vw,36px) clamp(20px,5vw,32px);
+  max-width:420px;width:100%;text-align:center;
+  box-shadow:0 32px 80px rgba(0,0,0,0.6);
+  animation:slideUp 0.45s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(32px);}to{opacity:1;transform:translateY(0);}}
+.lead-emoji{font-size:2rem;margin-bottom:14px;display:block;}
+.lead-card h2{font-family:'Idiqlat',serif;font-weight:700;font-size:clamp(1.15rem,3.5vw,1.35rem);color:var(--text);margin-bottom:10px;line-height:1.25;}
+.lead-card p {font-size:clamp(0.8rem,2.2vw,0.88rem);color:var(--text2);line-height:1.65;margin-bottom:20px;}
+.lead-card p strong{color:var(--yellow);}
+.lead-input{
+  width:100%;background:rgba(255,255,255,0.05);
+  border:1.5px solid var(--border);border-radius:10px;
+  padding:12px 14px;color:var(--text);
+  font-size:0.9rem;font-family:'Plus Jakarta Sans',sans-serif;
+  outline:none;transition:border-color 0.2s;margin-bottom:10px;
+}
+.lead-input::placeholder{color:var(--text3);}
+.lead-input:focus{border-color:var(--purple);}
+.btn-lead{
+  width:100%;background:var(--purple);color:#fff;border:none;
+  padding:13px;border-radius:10px;font-size:0.92rem;font-weight:700;
+  font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all 0.2s;margin-bottom:8px;
+}
+.btn-lead:hover{background:var(--purple2);transform:translateY(-1px);}
+.btn-skip-lead{
+  background:transparent;color:var(--text3);border:none;
+  font-size:0.78rem;font-family:'Plus Jakarta Sans',sans-serif;
+  cursor:pointer;transition:color 0.2s;padding:4px;text-decoration:underline;
+}
+.btn-skip-lead:hover{color:var(--text2);}
+.lead-close{
+  position:absolute;top:14px;right:16px;
+  background:rgba(255,255,255,0.07);border:1px solid var(--border);
+  color:var(--text3);width:28px;height:28px;border-radius:50%;
+  font-size:0.75rem;cursor:pointer;transition:all 0.2s;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Plus Jakarta Sans',sans-serif;
+}
+.lead-close:hover{background:rgba(255,255,255,0.12);color:var(--text);}
+.lead-card{position:relative;}
+
+/* ── PARTICLES ── */
+.pt{position:fixed;pointer-events:none;font-size:1.2rem;animation:ptf 1s ease forwards;z-index:999;}
+@keyframes ptf{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-100px) scale(0.3);}}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:22px;left:50%;
+  transform:translateX(-50%) translateY(60px);
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);padding:10px 22px;border-radius:50px;
+  font-size:0.82rem;font-weight:600;
+  box-shadow:0 12px 32px rgba(0,0,0,0.5);
+  transition:transform 0.4s cubic-bezier(.34,1.56,.64,1);
+  z-index:999;white-space:nowrap;max-width:90vw;text-align:center;
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ── RESPONSIVE ── */
+
+/* Mobile first — compact */
+@media(max-width:480px){
+  nav{padding:12px 16px;}
+  .logo{font-size:1.25rem;}
+  .nav-tag{font-size:0.66rem;padding:4px 10px;}
+  .main{padding:22px 12px 48px;gap:18px;}
+  .hero{padding:0 4px;}
+  .bbar{padding:14px 14px;}
+  .say-btn{padding:14px 22px;}
+  .done-btns{gap:8px;}
+  .btn-retake,.btn-next{padding:9px 16px;font-size:0.82rem;}
+  .sec-controls{gap:7px;}
+  .btn-sec{padding:6px 13px;font-size:0.73rem;}
+}
+
+/* Tablet / laptop — wider, more breathing room */
+@media(min-width:768px){
+  .main{padding:48px 32px 72px;gap:32px;}
+  .hero h1{font-size:3rem;}
+  .bbar{padding:22px 28px;}
+  .vwin{height:360px;}
+  .say-btn{font-size:1.05rem;padding:16px 36px;}
+  .big-ring{width:150px;height:150px;}
+  .br-num{font-size:2.6rem;}
+}
+
+@media(min-width:1024px){
+  .main{max-width:800px;}
+  .vwin{height:400px;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="https://teolix.vercel.app" class="logo">Teo<span>lix</span></a>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="nav-tag">Train Your Tongue</div>
+    <button class="nav-early" onclick="showLeadManual()">Get Early Access</button>
+  </div>
+</nav>
+
+<!-- LEAD OVERLAY -->
+<div class="lead-overlay" id="leadOverlay">
+  <div class="lead-card">
+    <!-- close X -->
+    <button class="lead-close" onclick="skipLead()" title="Close">✕</button>
+    <span class="lead-emoji">🚀</span>
+    <h2>You just unlocked Early Access.</h2>
+    <p>We're launching the <strong>full Teolix English Gym</strong> — with AI feedback, streaks, vocab, and your personal 30-day fluency journey — in a few days.<br><br>Be the first to know. <strong>Drop your name and contact and we'll reach you the moment it's live.</strong></p>
+    <input class="lead-input" id="leadName"    type="text"  placeholder="Your name" style="margin-bottom:8px;" />
+    <input class="lead-input" id="leadContact" type="text"  placeholder="Email or phone number" />
+    <button class="btn-lead" onclick="submitLead()">Get Early Access 🎯</button>
+    <button class="btn-skip-lead" onclick="skipLead()">Skip for now</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="hero">
+    <h1>Train your brain to think<br>automatically in English,<br><em>even in panic.</em></h1>
+    <p>When the moment comes — a meeting, a call, a question — your tongue moves before your brain overthinks. One scene at a time.</p>
+  </div>
+
+  <div class="card" id="card">
+
+    <!-- VIDEO WINDOW -->
+    <div class="vwin shuffle-fades" id="vwin">
+      <div class="strip" id="strip"></div>
+      <div class="bracket l"></div>
+      <div class="bracket r"></div>
+      <div class="pill" id="pill"></div>
+    </div>
+
+    <!-- BOTTOM BAR -->
+    <div class="bbar" id="bbar">
+
+      <!-- IDLE -->
+      <div class="state-idle" id="stateIdle">
+        <div>
+          <div class="slabel" id="slabel">Your tongue knows more than you think.</div>
+          <div class="ssub"   id="ssub">Spin a scene — then say what you saw.</div>
+        </div>
+        <button class="spin-btn" id="spinBtn" onclick="spin()">
+          <span class="dice">🎲</span> Spin
+        </button>
+      </div>
+
+      <!-- ACTION: Rewatch + Say What You Saw -->
+      <div class="state-action" id="stateAction">
+        <div class="rewatch-row">
+          <button class="btn-rewatch" onclick="rewatch()">↺ Rewatch</button>
+          <span style="font-size:0.76rem;color:var(--text3);">or</span>
+        </div>
+        <button class="say-btn" onclick="startSpeaking()">
+          🎙️ Say What You Saw
+        </button>
+      </div>
+
+      <!-- VOICE TIMER -->
+      <div class="state-voice" id="stateVoice">
+        <div class="big-ring">
+          <svg viewBox="0 0 140 140">
+            <circle class="br-bg" cx="70" cy="70" r="65"/>
+            <circle class="br-fg" id="brFg" cx="70" cy="70" r="65"/>
+          </svg>
+          <div class="br-inner">
+            <div class="br-num" id="brNum">45</div>
+            <div class="br-label">seconds</div>
+          </div>
+        </div>
+        <div class="mic-wave"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="speaking-lbl">🎙️ Speak now — say everything you saw</div>
+      </div>
+
+      <!-- DONE -->
+      <div class="state-done" id="stateDone">
+        <div class="done-title">Your tongue just got stronger. 💪</div>
+        <div class="done-sub">Every time you speak without translating first, your brain rewires itself. That hesitation you felt? It shrinks every single round.</div>
+        <div class="done-btns">
+          <button class="btn-retake" onclick="retake()">↺ Retake</button>
+          <button class="btn-next"   onclick="nextSpin()">🎲 Next Scene</button>
+        </div>
+      </div>
+
+      <!-- SECONDARY CONTROLS — always available after spin starts -->
+      <div class="sec-controls" id="secControls">
+        <button class="btn-sec" onclick="shuffleNew()">🎲 Shuffle</button>
+        <button class="btn-sec" onclick="skipScene()">→ Skip</button>
+        <button class="btn-sec warn" onclick="goBack()">← Back</button>
+      </div>
+
+    </div><!-- bbar -->
+  </div><!-- card -->
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SUPABASE ──
+const SB  = 'https://aqcglzjduycppamytrgn.supabase.co';
+const KEY = 'sb_publishable_PCMZQT9DcdafSdfz0SL6kg_0p0UPPZ9';
+
+async function loadScenes() {
+  try {
+    const r = await fetch(
+      `${SB}/rest/v1/scenes?is_active=eq.true&select=id,title,video_url,thumbnail`,
+      { headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`} }
+    );
+    const d = await r.json();
+    return Array.isArray(d) && d.length ? d : demoScenes();
+  } catch(e) { return demoScenes(); }
+}
+
+function demoScenes() {
+  return [
+    {id:1,title:'Morning Kitchen',video_url:'https://videos.pexels.com/video-files/3205095/3205095-uhd_2560_1440_25fps.mp4',thumbnail:'https://images.pexels.com/videos/3205095/pictures/preview-0.jpg'},
+    {id:2,title:'Office Desk',    video_url:'https://videos.pexels.com/video-files/3943028/3943028-uhd_2560_1440_25fps.mp4',thumbnail:'https://images.pexels.com/videos/3943028/pictures/preview-0.jpg'},
+    {id:3,title:'City Walk',      video_url:'https://videos.pexels.com/video-files/1448735/1448735-uhd_2560_1440_25fps.mp4',thumbnail:'https://images.pexels.com/videos/1448735/pictures/preview-0.jpg'},
+  ];
+}
+
+// ── AUDIO ──
+let audioCtx = null;
+function ac(){if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function beep(freq,dur,vol=0.1,type='sine'){
+  try{const c=ac(),o=c.createOscillator(),g=c.createGain();
+  o.connect(g);g.connect(c.destination);
+  o.frequency.value=freq;o.type=type;
+  g.gain.setValueAtTime(vol,c.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+dur);
+  o.start(c.currentTime);o.stop(c.currentTime+dur);}catch(e){}
+}
+const sfx = {
+  spinTick: p => beep(160+(1-p)*420,0.04,0.07,'square'),
+  land: () => {[523,659,784].forEach((f,i)=>setTimeout(()=>beep(f,0.28,0.2),i*110));},
+  go:   () => {[440,550,660,880].forEach((f,i)=>setTimeout(()=>beep(f,0.22,0.2),i*80));},
+  voice: n => {if(n%10===0||n<=5) beep(n<=5?660:380,0.08,0.12);},
+  done: () => {[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.3,0.22),i*90));},
+  click: () => beep(300,0.06,0.1),
+};
+
+// ── STATE ──
+let scenes=[], current=null, phase='idle';
+let voiceIv=null, watchTimeout=null;
+let recognition=null, currentVideoEl=null;
+let roundsDone=0, leadShown=false;
+const LEAD_AT=5;
+
+window.onload = async () => { scenes = await loadScenes(); buildStrip(); };
+
+// ── STRIP ──
+function buildStrip(){
+  const strip = document.getElementById('strip');
+  strip.innerHTML=''; strip.style.transform='translateX(0)';
+  document.getElementById('vwin').classList.add('shuffle-fades');
+  const pool=[];
+  while(pool.length<24) pool.push(...shuffle([...scenes]));
+  pool.slice(0,24).forEach(s=>{
+    const d=document.createElement('div'); d.className='strip-item';
+    const img=document.createElement('img'); img.src=s.thumbnail||''; img.alt='';
+    const dim=document.createElement('div'); dim.className='dim';
+    d.appendChild(img); d.appendChild(dim); strip.appendChild(d);
+  });
+}
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+// ── SPIN ──
+function spin(){
+  if(phase==='spinning'||!scenes.length) return;
+  sfx.click();
+  reset(); phase='spinning';
+
+  setCard('is-spinning'); setPill('p-spin','⟳ SHUFFLING');
+  showState('idle');
+  setSLabel('Finding your scene…','Get your tongue ready.');
+
+  const btn=document.getElementById('spinBtn');
+  btn.disabled=true; btn.classList.add('is-spinning');
+  btn.innerHTML='<span class="dice">🎲</span> Spinning…';
+
+  // show secondary controls during spin
+  document.getElementById('secControls').classList.add('show');
+
+  current = scenes[Math.floor(Math.random()*scenes.length)];
+  const strip=document.getElementById('strip');
+  const winW=document.getElementById('vwin').offsetWidth;
+  const items=strip.querySelectorAll('.strip-item');
+  const lo=Math.floor(items.length*0.3), hi=Math.floor(items.length*0.65);
+  const landIdx=lo+Math.floor(Math.random()*(hi-lo));
+
+  if(items[landIdx]){
+    items[landIdx].querySelector('img').src=current.thumbnail||'';
+    const d=items[landIdx].querySelector('.dim'); if(d) d.style.opacity='0';
+  }
+
+  let t0=null, lastSfx=0;
+  function frame(ts){
+    if(!t0) t0=ts;
+    const p=Math.min((ts-t0)/5000,1);
+    const e=1-Math.pow(1-p,4);
+    strip.style.transform=`translateX(-${e*landIdx*winW}px)`;
+    if(ts-lastSfx>45+p*380){sfx.spinTick(p);lastSfx=ts;}
+    if(p<1) requestAnimationFrame(frame);
+    else onLanded(strip,winW);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── LANDED → play video then stop, no ring shown ──
+function onLanded(strip,winW){
+  phase='watching';
+  setCard('is-landed'); setPill('p-watch','● WATCH NOW');
+  sfx.land(); burst();
+  setSLabel(current.title||'Scene','Watch carefully. Then say what you saw.');
+
+  const scrolled=Math.abs(parseFloat(strip.style.transform.replace(/[^\d.]/g,''))||0);
+  const idx=Math.round(scrolled/winW);
+  const items=strip.querySelectorAll('.strip-item');
+  const el=items[idx];
+
+  if(el){
+    el.innerHTML='';
+    const v=document.createElement('video');
+    v.src=current.video_url; v.autoplay=true; v.muted=true; v.playsInline=true;
+    v.style.cssText='width:100%;height:100%;object-fit:cover;';
+    el.appendChild(v); currentVideoEl=v;
+    // remove side fades while video plays
+    document.getElementById('vwin').classList.remove('shuffle-fades');
+    v.play().catch(()=>{});
+  }
+
+  // After 5s — silently stop, show action buttons. No ring, no countdown shown.
+  watchTimeout=setTimeout(()=>{
+    if(currentVideoEl){currentVideoEl.pause();currentVideoEl.currentTime=0;}
+    document.getElementById('vwin').classList.add('shuffle-fades');
+    phase='ready';
+    setPill('p-done','✓ READY');
+    showState('action');
+    resetSpinBtn();
+    // secondary controls still visible
+  },5000);
+}
+
+// ── REWATCH ──
+function rewatch(){
+  sfx.click();
+  if(!currentVideoEl) return;
+  document.getElementById('vwin').classList.remove('shuffle-fades');
+  currentVideoEl.currentTime=0; currentVideoEl.play().catch(()=>{});
+  setPill('p-watch','● REWATCH');
+  setTimeout(()=>{
+    if(currentVideoEl){currentVideoEl.pause();currentVideoEl.currentTime=0;}
+    document.getElementById('vwin').classList.add('shuffle-fades');
+    setPill('p-done','✓ READY');
+  },5000);
+}
+
+// ── SAY WHAT YOU SAW ──
+function startSpeaking(){
+  sfx.go(); phase='speaking';
+  setCard('is-speaking'); setPill('p-speak','🎙 SPEAKING');
+  showState('voice');
+  startVoiceTimer(45);
+  startMic();
+}
+
+function startVoiceTimer(secs){
+  const fg=document.getElementById('brFg');
+  const num=document.getElementById('brNum');
+  const C=408;
+  fg.style.strokeDashoffset=0; fg.style.stroke='var(--green)';
+  num.textContent=secs;
+  let left=secs;
+  voiceIv=setInterval(()=>{
+    left--; num.textContent=left; sfx.voice(left);
+    fg.style.strokeDashoffset=C*(1-left/secs);
+    if(left<=10) fg.style.stroke='#ef4444';
+    else if(left<=20) fg.style.stroke='#f97316';
+    if(left<=0){clearInterval(voiceIv);voiceIv=null;onDone();}
+  },1000);
+}
+
+function onDone(){
+  sfx.done(); stopMic(); phase='done'; roundsDone++;
+  setCard('is-done'); setPill('');
+  showState('done');
+  burst();
+  if(roundsDone>=LEAD_AT && !leadShown){
+    leadShown=true;
+    setTimeout(()=>document.getElementById('leadOverlay').classList.add('show'),900);
+  }
+}
+
+// ── RETAKE ──
+function retake(){
+  sfx.click(); clearTimers(); stopMic();
+  showState('action');
+  setCard('is-landed'); setPill('p-done','✓ READY');
+  phase='ready';
+  if(currentVideoEl){
+    document.getElementById('vwin').classList.remove('shuffle-fades');
+    currentVideoEl.currentTime=0; currentVideoEl.play().catch(()=>{});
+    setTimeout(()=>{
+      if(currentVideoEl){currentVideoEl.pause();currentVideoEl.currentTime=0;}
+      document.getElementById('vwin').classList.add('shuffle-fades');
+    },5000);
+  }
+}
+
+// ── SHUFFLE (new scene mid-flow) ──
+function shuffleNew(){
+  sfx.click(); clearTimers(); stopMic();
+  buildStrip(); phase='idle';
+  setCard(''); setPill('');
+  showState('idle'); resetSpinBtn();
+  setSLabel('Your tongue knows more than you think.','Spin a scene — then say what you saw.');
+  document.getElementById('secControls').classList.remove('show');
+  setTimeout(spin,60);
+}
+
+// ── NEXT SCENE (after done) ──
+function nextSpin(){
+  sfx.click(); clearTimers(); stopMic();
+  buildStrip(); phase='idle';
+  setCard(''); setPill('');
+  showState('idle'); resetSpinBtn();
+  setSLabel('Your tongue knows more than you think.','Spin a scene — then say what you saw.');
+  document.getElementById('secControls').classList.remove('show');
+  setTimeout(spin,60);
+}
+
+// ── SKIP ──
+function skipScene(){
+  sfx.click(); clearTimers(); stopMic();
+  buildStrip(); phase='idle';
+  setCard(''); setPill('');
+  showState('idle'); resetSpinBtn();
+  document.getElementById('secControls').classList.remove('show');
+  setSLabel('Skipped! Try another scene.','Your next one is waiting.');
+  setTimeout(spin,60);
+}
+
+// ── BACK ──
+function goBack(){
+  sfx.click(); clearTimers(); stopMic();
+  buildStrip(); phase='idle';
+  setCard(''); setPill('');
+  showState('idle'); resetSpinBtn();
+  document.getElementById('secControls').classList.remove('show');
+  setSLabel('Your tongue knows more than you think.','Spin a scene — then say what you saw.');
+}
+
+// ── MIC ──
+function startMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return;
+  try{
+    recognition=new SR();
+    recognition.continuous=true; recognition.interimResults=false; recognition.lang='en-IN';
+    recognition.start();
+    recognition.onerror=()=>{};
+  }catch(e){}
+}
+function stopMic(){if(recognition){try{recognition.stop();}catch(e){}recognition=null;}}
+
+// ── LEAD CAPTURE ──
+function showLeadManual(){
+  sfx.click();
+  document.getElementById('leadName').value='';
+  document.getElementById('leadContact').value='';
+  document.getElementById('leadOverlay').classList.add('show');
+}
+async function submitLead(){
+  sfx.click();
+  const name    = document.getElementById('leadName').value.trim();
+  const contact = document.getElementById('leadContact').value.trim();
+  if(!contact){showToast('Please enter your email or phone');return;}
+  try{
+    await fetch(`${SB}/rest/v1/leads`,{
+      method:'POST',
+      headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({name:name||'',contact,source:'shuffle_early_access',created_at:new Date().toISOString()})
+    });
+  }catch(e){}
+  document.getElementById('leadOverlay').classList.remove('show');
+  showToast('🎯 You\'re on the early access list!');
+}
+function skipLead(){sfx.click();document.getElementById('leadOverlay').classList.remove('show');}
+
+// ── HELPERS ──
+function reset(){
+  clearTimers(); stopMic();
+  ['stateIdle','stateAction','stateVoice','stateDone'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.style.display='none'; el.classList.remove('show');
+  });
+}
+
+const STATES={idle:'stateIdle',action:'stateAction',voice:'stateVoice',done:'stateDone'};
+function showState(s){
+  reset();
+  const el=document.getElementById(STATES[s]);
+  if(el){ el.style.display='flex'; el.classList.add('show'); }
+}
+
+function clearTimers(){
+  if(voiceIv){clearInterval(voiceIv);voiceIv=null;}
+  if(watchTimeout){clearTimeout(watchTimeout);watchTimeout=null;}
+}
+function setCard(c){const el=document.getElementById('card');el.className='card';if(c) el.classList.add(c);}
+function setPill(type,label){const p=document.getElementById('pill');p.className='pill';if(type){p.classList.add(type);p.textContent=label||'';}}
+function setSLabel(a,b){document.getElementById('slabel').textContent=a;document.getElementById('ssub').textContent=b;}
+function resetSpinBtn(){const b=document.getElementById('spinBtn');b.disabled=false;b.classList.remove('is-spinning');b.innerHTML='<span class="dice">🎲</span> Spin';}
+
+function burst(){
+  ['⚡','✦','★','◆','✸'].forEach((em,i)=>{
+    setTimeout(()=>{
+      for(let k=0;k<2;k++){
+        const el=document.createElement('div');el.className='pt';el.textContent=em;
+        el.style.cssText=`left:${15+Math.random()*70}vw;top:${20+Math.random()*40}vh;color:var(--yellow);animation-delay:${k*60}ms`;
+        document.body.appendChild(el);setTimeout(()=>el.remove(),1200);
+      }
+    },i*50);
+  });
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// init: show idle state
+document.addEventListener('DOMContentLoaded',()=>showState('idle'));
+</script>
+</body>
+</html>

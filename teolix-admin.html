@@ -227,6 +227,8 @@ tr:hover td { background:rgba(255,255,255,0.02); }
     <div class="sb-item" onclick="showSection('allscenes', this)"><span>🎬</span> All Scenes</div>
     <div class="sb-item" onclick="showSection('wishlist', this)"><span>❤️</span> Wishlist</div>
     <div class="sb-divider"></div>
+    <div class="sb-item" onclick="showSection('reactvideos', this)"><span>⚡</span> React Videos</div>
+    <div class="sb-divider"></div>
     <div class="sb-item" onclick="showSection('cat_home', this)"><span>🏠</span> Home</div>
     <div class="sb-item" onclick="showSection('cat_classroom', this)"><span>🏫</span> Classroom</div>
     <div class="sb-item" onclick="showSection('cat_market', this)"><span>🛒</span> Market</div>
@@ -592,6 +594,48 @@ tr:hover td { background:rgba(255,255,255,0.02); }
         <button onclick="closeEdit()" style="flex:1;background:#334155;border:none;color:#94a3b8;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;font-size:0.88rem;">Cancel</button>
       </div>
     </div>
+  </div>
+
+  <!-- REACT VIDEOS SECTION -->
+  <div id="reactVideosSection" style="display:none;padding:24px;">
+    <div class="section-hd">
+      <div>
+        <h2>⚡ React Videos</h2>
+        <p style="color:#64748b;font-size:0.82rem;">Videos for the free React website. Add relatable Indian situations.</p>
+      </div>
+      <a href="/react.html" target="_blank" style="background:rgba(91,35,255,0.15);border:1px solid rgba(91,35,255,0.3);color:#a78bfa;padding:8px 16px;border-radius:8px;font-size:0.78rem;font-weight:700;text-decoration:none;">👁 Preview →</a>
+    </div>
+
+    <div class="mcq-form-card" style="margin-bottom:24px;">
+      <h3>➕ Add React Video</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label class="sf-label">Search Pexels</label>
+          <div style="display:flex;gap:8px;">
+            <input id="rvSearch" placeholder="e.g. office, street food..." style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px;color:#f1f5f9;font-size:0.84rem;">
+            <button onclick="searchRVVideo()" style="background:#5b21b6;border:none;color:white;padding:9px 16px;border-radius:8px;font-weight:700;cursor:pointer;">Search</button>
+          </div>
+        </div>
+        <div>
+          <label class="sf-label">Or paste URL directly</label>
+          <input id="rvDirectUrl" placeholder="https://..." style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px;color:#f1f5f9;font-size:0.84rem;">
+        </div>
+      </div>
+      <div id="rvVideoResults" style="display:none;margin-bottom:16px;">
+        <div id="rvVideoGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;"></div>
+      </div>
+      <div id="rvSelectedWrap" style="display:none;background:#0f172a;border-radius:10px;padding:12px;margin-bottom:12px;align-items:center;gap:12px;">
+        <video id="rvPreview" style="width:120px;height:68px;object-fit:cover;border-radius:8px;" muted autoplay loop playsinline></video>
+        <div style="flex:1;">
+          <div style="font-size:0.75rem;color:#22c55e;margin-bottom:6px;font-weight:700;">✅ Video selected</div>
+          <input id="rvTitle" placeholder="Describe the situation..." style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px;color:#f1f5f9;font-size:0.84rem;">
+        </div>
+      </div>
+      <button onclick="saveRVVideo()" style="background:#5b21b6;border:none;color:white;padding:12px 24px;border-radius:10px;font-weight:700;cursor:pointer;font-size:0.88rem;width:100%;">➕ Add to React Videos</button>
+    </div>
+
+    <div style="font-size:0.7rem;font-weight:700;letter-spacing:2px;color:#475569;margin-bottom:16px;">ADDED (<span id="rvCount">0</span>)</div>
+    <div id="rvList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;"></div>
   </div>
 
   </div><!-- end main -->
@@ -1073,6 +1117,7 @@ function showSection(name, el) {
   document.getElementById('allScenesSection').style.display = 'none';
   document.getElementById('catSection').style.display = 'none';
   document.getElementById('wishlistSection').style.display = 'none';
+  document.getElementById('reactVideosSection').style.display = 'none';
 
   if(name === 'scenes') {
     document.getElementById('scenesSection').classList.remove('hidden');
@@ -1085,9 +1130,9 @@ function showSection(name, el) {
   } else if(name === 'allscenes') {
     document.getElementById('allScenesSection').style.display = 'block';
     loadAllScenes();
-  } else if(name === 'wishlist') {
-    document.getElementById('wishlistSection').style.display = 'block';
-    loadWishlist();
+  } else if(name === 'reactvideos') {
+    document.getElementById('reactVideosSection').style.display = 'block';
+    loadRVList();
   } else if(name.startsWith('cat_')) {
     const cat = name.replace('cat_', '');
     document.getElementById('catSection').style.display = 'block';
@@ -1498,6 +1543,100 @@ async function saveEditGQ() {
     loadGameQuestions();
     showToast('✅ Game question updated!', '#22c55e');
   } catch(e) { showToast('❌ Update failed!', '#ef4444'); }
+}
+
+// ===== REACT VIDEOS =====
+let rvSelectedVideo = null;
+
+async function searchRVVideo() {
+  const query = document.getElementById('rvSearch').value.trim();
+  if(!query) return;
+  if(!apiKey) { showToast('⚠️ Enter Pexels API key first!', '#f59e0b'); return; }
+
+  document.getElementById('rvVideoResults').style.display = 'block';
+  document.getElementById('rvVideoGrid').innerHTML = '<div style="color:#475569;font-size:0.8rem;padding:8px;">Searching...</div>';
+
+  try {
+    const res = await fetch(
+      `https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=6&orientation=landscape`,
+      { headers: { Authorization: apiKey } }
+    );
+    const data = await res.json();
+    const grid = document.getElementById('rvVideoGrid');
+    if(!data.videos?.length) { grid.innerHTML = '<div style="color:#475569;">No results</div>'; return; }
+    grid.innerHTML = data.videos.map(v => {
+      const file = v.video_files.find(f => f.quality === 'sd') || v.video_files[0];
+      return `
+      <div onclick="selectRVVideo('${file.link}','${v.image}')" style="cursor:pointer;border-radius:8px;overflow:hidden;border:2px solid transparent;transition:all 0.2s;" 
+           onmouseover="this.style.borderColor='#5b21b6'" onmouseout="this.style.borderColor='transparent'">
+        <img src="${v.image}" style="width:100%;height:70px;object-fit:cover;">
+      </div>`;
+    }).join('');
+  } catch(e) { showToast('❌ Search failed!', '#ef4444'); }
+}
+
+function selectRVVideo(url, thumb) {
+  rvSelectedVideo = { url, thumb };
+  document.getElementById('rvPreview').src = url;
+  document.getElementById('rvSelectedWrap').style.display = 'flex';
+  document.getElementById('rvVideoResults').style.display = 'none';
+}
+
+async function saveRVVideo() {
+  // Check direct URL
+  const directUrl = document.getElementById('rvDirectUrl').value.trim();
+  if(directUrl && !rvSelectedVideo) {
+    rvSelectedVideo = { url: directUrl, thumb: '' };
+  }
+  if(!rvSelectedVideo) { showToast('⚠️ Select a video first!', '#f59e0b'); return; }
+  const title = document.getElementById('rvTitle').value.trim() || 'React to this';
+
+  try {
+    await sbFetch('react_videos', {
+      method: 'POST',
+      body: JSON.stringify({
+        video_url: rvSelectedVideo.url,
+        thumbnail: rvSelectedVideo.thumb,
+        title,
+        is_active: true
+      })
+    });
+    showToast('✅ React video added!', '#22c55e');
+    rvSelectedVideo = null;
+    document.getElementById('rvTitle').value = '';
+    document.getElementById('rvDirectUrl').value = '';
+    document.getElementById('rvSelectedWrap').style.display = 'none';
+    loadRVList();
+  } catch(e) { showToast('❌ Failed to save!', '#ef4444'); }
+}
+
+async function loadRVList() {
+  try {
+    const data = await sbFetch('react_videos?order=created_at.desc');
+    document.getElementById('rvCount').textContent = (data||[]).length;
+    const list = document.getElementById('rvList');
+    if(!data?.length) {
+      list.innerHTML = '<p style="color:#475569;font-size:0.84rem;">No react videos yet. Add some above!</p>';
+      return;
+    }
+    list.innerHTML = data.map(v => `
+      <div style="background:#1e293b;border-radius:12px;overflow:hidden;border:1px solid #334155;">
+        <video src="${v.video_url}" style="width:100%;height:130px;object-fit:cover;" muted autoplay loop playsinline></video>
+        <div style="padding:10px;">
+          <div style="font-size:0.78rem;font-weight:600;color:#f1f5f9;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.title||'Untitled'}</div>
+          <button onclick="deleteRV('${v.id}')" style="width:100%;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#f87171;padding:6px;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;">🗑️ Remove</button>
+        </div>
+      </div>`).join('');
+  } catch(e) { showToast('❌ Could not load react videos', '#ef4444'); }
+}
+
+async function deleteRV(id) {
+  if(!confirm('Remove this react video?')) return;
+  try {
+    await sbFetch(`react_videos?id=eq.${id}`, { method: 'DELETE' });
+    showToast('🗑️ Removed', '#ef4444');
+    loadRVList();
+  } catch(e) { showToast('❌ Failed!', '#ef4444'); }
 }
 
 function showToast(msg, color='#22c55e') {
